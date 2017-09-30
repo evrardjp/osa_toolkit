@@ -112,17 +112,26 @@ def find_latest_version(url, version):
 
 
 def getCurrentOSAVersion(folder):
-    """ Finds the current OpenStack-Ansible version
-        Input:
-            Folder of openstack-ansible
-            (without the end slash)
+    """ Finds the current OpenStack-Ansible version.
+    Folder is the path to openstack-ansible without
+    the end slash.
     """
+
     for filename in VERSION_NUMBER_FILES:
         var_file = "{}/{}".format(folder, filename)
         if os.path.exists(var_file):
             data, _, _ = load_yaml(var_file)
             if data.get('openstack_release'):
                 return filename, data.get('openstack_release')
+
+
+def getTrackingBranch(folder):
+    """ Returns the branch the OpenStack-Ansible repo
+    is currently tracking.
+    """
+    # TODO
+    # Reuse in update_openstack_projects + bump_arr
+    pass
 
 
 # CODE STARTS HERE
@@ -137,19 +146,13 @@ click_log.basic_config(logger)
 @click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
 @click.option(*COMMIT_OPT, **COMMIT_PARAMS)
 def update_os_release_file(**kwargs):
-    """ Prepare a new release for the openstack/release repo
-        in your workdir
+    """ Update in tree a release file
+    with a given branch (code name) and
+    version (release number) inside a new
+    checkin of the openstack/release repo
+    in your workdir
     """
 
-    # Steps:
-    #
-    # Enter OA folder, find out its sha
-    # Given a OPENSTACK branch name
-    # Cleanup "releases" repo in workspace
-    # Git clone repo master in workspace
-    # Find out each a-r-r shas
-    # Output a-r-r and OA HEAD sha into a structure for releases
-    #
     releases_repo_url = OPENSTACK_REPOS + '/releases.git'
     releases_folder = kwargs['workdir'] + '/releases'
 
@@ -184,7 +187,6 @@ def update_os_release_file(**kwargs):
     # Args validation done.
 
     yaml = YAML()
-
     oa = Repo(oa_folder)
     head_commit = oa.head.commit
     logger.info("Found OpenStack-Ansible version {}".format(head_commit))
@@ -320,10 +322,8 @@ def check_global_requirement_pins(**kwargs):
 @click.option("--release-notes/no-release-notes", default=True)
 def bump_arr(**kwargs):
     """ Update Roles in Ansible Role Requirements for branch,
-        effectively freezing them.
-        Calls fetch_reno
-        Requires Workdir
-        Requires a clean OA.
+    effectively freezing them.
+    Fetches their release notes
     """
 
     # Discover branch currently tracking
@@ -377,9 +377,16 @@ def bump_arr(**kwargs):
         yaml.block_seq_indent = bsi
         yaml.indent = ind
         yaml.dump(arr, role_req_file)
-        logger.info("Patched!")
+        logger.info("Ansible Role Requirements file patched!")
 
-    logger.info("Processing Release Notes")
+    msg = ("Here is a commit message you could use:\n"
+           "Update all SHAs for {new_version}\n\n"
+           "This patch updates all the roles to the latest available stable \n"
+           "SHA's, copies the release notes from the updated roles into the \n"
+           "integrated repo, updates all the OpenStack Service SHA's, and \n"
+           "updates the appropriate python requirements pins. \n\n"
+           "Depends-On: {release_changeid}")
+    click.echo(msg)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -425,71 +432,10 @@ def bump_oa_release_number(**kwargs):
         repo.index.add([fpth])
         repo.index.commit(message)
 
-# def release():
-#     """ Do all the above functions in a chain """
-
-#     # Steps:
-#     # update_os_release_file
-#     # git review
-#     #   returns X
-#     # Take review change id
-#     # SHA Bump of ARR
-#     # SHA Bump of Upstream
-#     # git review
-#     #   Depends on <X>
-#     #
-#     """
-#     #current_hash=$(git rev-parse HEAD)
-#     #current_version=$(awk '/openstack_release:/ {print $2}' playbooks/inventory/group_vars/all.yml)
-#     #../release-yaml-file-prep.py -f ansible-role-requirements.yml -v "${current_version}" | awk "/projects:/{print; print \"      - repo: openstack/openstack-ansible\n        hash: ${current_hash}\"; next}1" | sed '/^releases:/d' | sed '/^\s*$/d' >> ~/code/releases/deliverables/newton/openstack-ansible.yaml
-#     """
-
-#     """
-#     Update all SHAs for ${new_version}" \
-#     -m "This patch updates all the roles to the latest available stable
-#     SHA's, copies the release notes from the updated roles into the
-#     integrated repo, updates all the OpenStack Service SHA's, and
-#     updates the appropriate python requirements pins.
-
-#     Depends-On: ${release_changeid}"
-
-#     """
-#     pass
-
 
 if __name__ == '__main__':
     # update_os_release_file()
     # check_global_requirement_pins()
     # bump_arr()
-    bump_oa_release_number()
-
-# @click.group(context_settings=CONTEXT_SETTINGS)
-# @click.option('--debug/--no-debug', default=False)
-# @click.option('-d', '--directory',
-#               default='/tmp/code',
-#               type=click.Path(exists=True, file_okay=False,
-#                               dir_okay=True, writable=True, resolve_path=True),
-#               help='Temporary workspace folder')
-# @click.pass_context
-# def cli(ctx, debug, directory):  # pragma: no cover
-#     ctx.obj['DEBUG'] = debug
-#     ctx.obj['DIRECTORY'] = directory
-#     if debug:
-#         logging.getLogger().setLevel(logging.DEBUG)
-#     else:
-#         logging.getLogger().setLevel(logging.INFO)
-
-# @cli.command()
-# @click.option('-d', '--directory',
-#               default='/tmp/code',
-#               help='Temporary workspace folder')
-# @click.pass_context
-# def arr_update(ctx):
-#     """ Update Ansible Role Requirements for branch """
-#     click.echo('Temporary workspace folder is %s' % (ctx.obj['DIRECTORY']))
-#     logging.info("Woot")
-#     logging.debug("only appears on debug")
-
-
-# if __name__ == '__main__':
-#     cli(obj={})
+    # bump_oa_release_number()
+    update_openstack_projects()
