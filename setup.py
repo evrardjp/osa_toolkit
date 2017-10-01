@@ -16,9 +16,9 @@ setup(
     entry_points='''
         [console_scripts]
         check-global-requirements=release.py:check_global_requirement_pins
-        bump-openstack-projects=release.py:update_openstack_projects
+        bump-upstream-sources=release.py:bump_upstream_sources
         update-role-files=release.py:update_role_files
-        update-ansible-role-requirements=release.py:bump_arr
+        bump-ansible-role-requirements=release.py:bump_arr
         bump-oa-release-number=release.py:bump_oa_release_number
         update-os-release-file=release.py:update_os_release_file
     ''',

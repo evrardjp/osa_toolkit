@@ -169,8 +169,49 @@ def update_os_release_file(**kwargs):
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click_log.simple_verbosity_option(LOGGER)
 @click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
-def update_openstack_projects(**kwargs):
-    """ Bump OpenStack projects and their files in our roles"""
+def bump_upstream_sources(**kwargs):
+    """ Bump OpenStack projects SHA in OA repo
+    """
+
+    # Find out current tracking branch to bump
+    # the services matching the branch:
+    oa_folder = kwargs['workdir'] + '/openstack-ansible/'
+    try:
+        remote_branch = tracking_branch_name(oa_folder)
+    except ValueError as verr:
+        raise SystemExit(verr)
+    LOGGER.info("Updating OpenStack projects on {}".format(remote_branch))
+
+    os_srv_file = ("{}/playbooks/defaults/repo_packages/"
+                   "openstack_services.yml".format(oa_folder))
+    openstack_services, ind, bsi = load_yaml(os_srv_file)
+
+    regex = re.compile('(?P<project>.*)_git_repo: (?P<remote>.*)')
+    for item in openstack_services:
+        print(item)
+        m = regex.match(item)
+        if m:
+            project = m.group('project')
+            openstack_services["{}_git_install_branch".format(project)] = \
+                find_latest_remote_ref(m.group('remote'), remote_branch)
+
+    with open(os_srv_file, 'w') as os_srv_fh:
+        yaml = YAML()
+        yaml.explicit_start = True
+        yaml.default_flow_style = False
+        yaml.block_seq_indent = bsi
+        yaml.indent = ind
+        yaml.dump(openstack_services, os_srv_fh)
+        LOGGER.info("OpenStack Projects SHA updated!")
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click_log.simple_verbosity_option(LOGGER)
+@click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
+def update_role_files(**kwargs):
+    """ Bump OpenStack Projects files into their
+        OpenStack-Ansible role
+    """
 
     # Finds out which tracking branch you are on
     # Generates a commit in OA and each of its roles
@@ -183,7 +224,6 @@ def update_openstack_projects(**kwargs):
     # SHA's, copies the release notes from the updated roles into the
     # integrated repo, updates all the OpenStack Service SHA's, and
     # updates the appropriate python requirements pins.
-
     pass
 
 
@@ -360,4 +400,4 @@ if __name__ == '__main__':
     # check_global_requirement_pins()
     # bump_arr()
     # bump_oa_release_number()
-    update_openstack_projects()
+    bump_upstream_sources()

@@ -14,7 +14,7 @@ Steps:
 1. Suggest upper constraints pin changes:
     check-global-requirements
 1. Update Upstream Projects
-    bump-openstack-projects --commit
+    bump-upstream-sources --commit
     update-role-files --comit
 1. Git review
 
@@ -26,7 +26,7 @@ Steps:
 1. Go to OA folder
 1. Ensure you're master (not detached)
 1. Freeze ansible-role-requirements by doing
-    update-ansible-role-requirements
+    bump-ansible-role-requirements
     bump-oa-release-number --version=17.0.0b1 --commit 
 1. git review in OA
 1. Wait for it to merge.
@@ -49,9 +49,9 @@ Steps:
 1. Take review change id
     export release_changeid=$(git log HEAD^..HEAD | awk '/Change-Id/ {print $2}')
 1. Bump the role
-    update-ansible-role-requirements
+    bump-ansible-role-requirements
     bump-oa-release-number --version=auto --commit
     check-global-requirements
-    bump-openstack-projects --commit --dependson="${release_changeid}"
+    bump-upstream-sources --commit --dependson="${release_changeid}"
     update-role-files --comit
 1. Review OpenStack-Ansible folder and each of the roles.
