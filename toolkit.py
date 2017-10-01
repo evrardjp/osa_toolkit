@@ -1,3 +1,10 @@
+""" Convenient functions for releasing and other
+    openstack-ansible purposes
+"""
+import os
+import re
+from git import cmd as gitcmd           # GitPython package
+from git import Repo
 from ruamel.yaml.util import load_yaml_guess_indent
 
 
@@ -10,53 +17,97 @@ def load_yaml(path, mode='r'):
         YAML().block_seq_indent
         YAML().indent
     """
-    with open(path, mode) as fd:
-        (data, ind, bsi) = load_yaml_guess_indent(fd)
+    with open(path, mode) as fhdle:
+        (data, ind, bsi) = load_yaml_guess_indent(fhdle)
         return (data, ind, bsi)
 
-# import yaml
-# import yaml.constructor
 
-# try:
-#     # included in standard lib from Python 2.7
-#     from collections import OrderedDict
-# except ImportError:
-#     # try importing the backported drop-in replacement
-#     # it's available on PyPI
-#     from ordereddict import OrderedDict
+def get_pypi_version(pypi_connection, pkg_name):
+    """Get the current package version from PyPI.
+    Expects a xmlrpclib connection to PyPi server
+    and a package name as mandatory arguments.
+    """
+    pkg_result = [v for v in pypi_connection.package_releases(pkg_name, True)
+                  if not re.compile('a|b|rc').search(v)]
+    if pkg_result:
+        pkg_version = pkg_result[0]
+    else:
+        pkg_version = 'Not available.'
 
-# class OrderedDictYAMLLoader(yaml.Loader):
-#     """
-#     A YAML loader that loads mappings into ordered dictionaries.
-#     """
+    return pkg_version
 
-#     def __init__(self, *args, **kwargs):
-#         yaml.Loader.__init__(self, *args, **kwargs)
 
-#         self.add_constructor(u'tag:yaml.org,2002:map', type(self).construct_yaml_map)
-#         self.add_constructor(u'tag:yaml.org,2002:omap', type(self).construct_yaml_map)
+def get_oa_version(osa_folder):
+    """ Fetches the current OpenStack-Ansible version.
+    Folder is the path to openstack-ansible without
+    the end slash.
+    """
 
-#     def construct_yaml_map(self, node):
-#         data = OrderedDict()
-#         yield data
-#         value = self.construct_mapping(node)
-#         data.update(value)
+    for filename in ["group_vars/all/all.yml",
+                     "playbooks/inventory/group_vars/all.yml"]:
+        var_file = "{}/{}".format(osa_folder, filename)
+        if os.path.exists(var_file):
+            data, _, _ = load_yaml(var_file)
+            if data.get('openstack_release'):
+                return filename, data.get('openstack_release')
 
-#     def construct_mapping(self, node, deep=False):
-#         if isinstance(node, yaml.MappingNode):
-#             self.flatten_mapping(node)
-#         else:
-#             raise yaml.constructor.ConstructorError(None, None,
-#                 'expected a mapping node, but found %s' % node.id, node.start_mark)
 
-#         mapping = OrderedDict()
-#         for key_node, value_node in node.value:
-#             key = self.construct_object(key_node, deep=deep)
-#             try:
-#                 hash(key)
-#             except TypeError, exc:
-#                 raise yaml.constructor.ConstructorError('while constructing a mapping',
-#                     node.start_mark, 'found unacceptable key (%s)' % exc, key_node.start_mark)
-#             value = self.construct_object(value_node, deep=deep)
-#             mapping[key] = value
-#         return mapping
+def find_latest_remote_ref(url, reference, guess=True):
+    """ Discovers, from a git remote, the latest
+        "appropriate" tag/sha based on a reference:
+        If reference is a branch, returns the sha
+        for the head of the branch.
+        If reference is a tag, find the latest patch
+        release of the same tag line.
+    """
+    # Use GitPtyhon git.cmd to avoid fetching repos
+    # as listing remotes is not implemented outside Repo use
+    gcli = gitcmd.Git()
+    # this stores a sha for a matching branch/tag
+    # tag will watch if ending with a number
+    # (so v11.1, 1.11.1rc1 would still match)
+    regex = re.compile('(?P<sha>[0-9a-f]{40})\t(?P<fullref>'
+                       'refs/heads/(?P<branch>.*)'
+                       '|refs/tags/(?P<tag>.*\d))')
+
+    # search_ver will become ["master"], ["eol-mitaka"],
+    # ["stable/pike"], ["16", "1", "9"]
+    search_ver = reference.split('.')
+
+    # sadly we can't presume the ls-remote list will be sorted
+    # so we have to find out ourselves.
+    patch_releases = []
+
+    for remote in gcli.ls_remote('--refs', url).splitlines():
+        m = regex.match(remote)
+        # First, start to match the remote result with a branchname
+        if m and m.group('branch') and m.group('branch') == reference:
+            return m.group('sha')
+        # Then try to find closest matching tags if guess work is allowed
+        elif m and m.group('tag') and guess:
+            ref_of_tag = m.group('tag').split('.')
+            # keep a tag if it's almost the same (only last part changes)
+            # as what we are looking for.
+            # Store its reference and sha.
+            if ref_of_tag[0:-1] and ref_of_tag[0:-1] == search_ver[0:-1]:
+                # store only the last bit, space efficient!
+                patch_releases.append(ref_of_tag[-1])
+
+    # Returns the highest value if something was found
+    if patch_releases:
+        search_ver[-1] = max(patch_releases)
+        return ".".join(search_ver)
+    # Nothing else found: Return original reference.
+    return reference
+
+
+def tracking_branch_name(git_folder):
+    """ Returns the branch name of the repo
+    you are currently tracking.
+    """
+    repo = Repo(git_folder)
+    tracking_branch = repo.active_branch.tracking_branch()
+    if tracking_branch is None:
+        raise ValueError(
+            "{} is not tracking any remote branch".format(git_folder))
+    return "{}".format(tracking_branch.remote_head)
