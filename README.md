@@ -15,7 +15,7 @@ Steps:
     check-global-requirements
 1. Update Upstream Projects
     bump-upstream-sources --commit
-    update-role-files --comit
+    #update-role-files --comit
 1. Git review
 
 Releasing master milestone
@@ -51,7 +51,8 @@ Steps:
 1. Bump the role
     bump-ansible-role-requirements
     bump-oa-release-number --version=auto --commit
+        export next_release = ...
     check-global-requirements
-    bump-upstream-sources --commit --dependson="${release_changeid}"
-    update-role-files --comit
+    bump-upstream-sources --commit
+    #update-role-files --comit
 1. Review OpenStack-Ansible folder and each of the roles.

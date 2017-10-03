@@ -1,6 +1,7 @@
 """ Convenient functions for releasing and other
     openstack-ansible purposes
 """
+from datetime import datetime
 import os
 import re
 from git import cmd as gitcmd           # GitPython package
@@ -111,3 +112,24 @@ def tracking_branch_name(git_folder):
         raise ValueError(
             "{} is not tracking any remote branch".format(git_folder))
     return "{}".format(tracking_branch.remote_head)
+
+
+def bump_project_sha_with_comments(match, previous_line):
+    """ Take a line like:
+    requirements_git_install_branch: 0143d0c2c9fc67380a4ae8e505a9a3fb55c0e888 # HEAD of "stable/pike" as of 11.09.2017
+    and updates the sha, and the date, based on the branch found in the line.
+    The information from previous_line contains the remote and its project (to validate data)
+    """
+    # Ensure previously saved line is the same as current line before
+    # patching
+    if previous_line['project'] != match.group('project'):
+        raise SystemExit
+    data = {
+        "project": previous_line['project'],
+        "branch": match.group('branch'),
+        "sha": find_latest_remote_ref(previous_line['remote'], match.group('branch')),
+        "date": '{:%d.%m.%Y}'.format(datetime.now())
+    }
+    return ('{project}_git_install_branch: '
+            '{sha} # HEAD of "{branch}" as of '
+            '{date}').format(**data)

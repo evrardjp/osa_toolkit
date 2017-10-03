@@ -1,4 +1,4 @@
-""" Make the whole thing pip installable """
+""" pip installable tools for working with OpenStack-Ansible """
 from setuptools import setup
 
 setup(

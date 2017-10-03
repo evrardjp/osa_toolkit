@@ -3,6 +3,7 @@
 
 from datetime import datetime
 import fileinput
+import glob
 import logging
 import os
 import re
@@ -175,34 +176,55 @@ def bump_upstream_sources(**kwargs):
 
     # Find out current tracking branch to bump
     # the services matching the branch:
-    oa_folder = kwargs['workdir'] + '/openstack-ansible/'
+    oa_folder = kwargs['workdir'] + '/openstack-ansible'
     try:
         remote_branch = tracking_branch_name(oa_folder)
     except ValueError as verr:
         raise SystemExit(verr)
-    LOGGER.info("Updating OpenStack projects on {}".format(remote_branch))
 
-    os_srv_file = ("{}/playbooks/defaults/repo_packages/"
-                   "openstack_services.yml".format(oa_folder))
-    openstack_services, ind, bsi = load_yaml(os_srv_file)
+    LOGGER.info("Each file can take a while to update.")
+    prevline = {}
+    reporegex = re.compile('(?P<project>.*)_git_repo: (?P<remote>.*)')
+    branchregex = re.compile(('(?P<project>.*)_git_install_branch: '
+                              '(?P<sha>[0-9a-f]{40}) '
+                              '# HEAD of "(?P<branch>.*)" '
+                              'as of .*'))
 
-    regex = re.compile('(?P<project>.*)_git_repo: (?P<remote>.*)')
-    for item in openstack_services:
-        print(item)
-        m = regex.match(item)
-        if m:
-            project = m.group('project')
-            openstack_services["{}_git_install_branch".format(project)] = \
-                find_latest_remote_ref(m.group('remote'), remote_branch)
+    update_files = glob.glob(
+        "{}/playbooks/defaults/repo_packages/*.yml".format(oa_folder))
 
-    with open(os_srv_file, 'w') as os_srv_fh:
-        yaml = YAML()
-        yaml.explicit_start = True
-        yaml.default_flow_style = False
-        yaml.block_seq_indent = bsi
-        yaml.indent = ind
-        yaml.dump(openstack_services, os_srv_fh)
-        LOGGER.info("OpenStack Projects SHA updated!")
+    stable_branch_skips = [
+        "openstack_testing.yml",
+        "nova_consoles.yml",
+    ]
+
+    for filename in update_files:
+        if remote_branch.startswith("stable/") and \
+                os.path.basename(filename) in stable_branch_skips:
+            LOGGER.info("Skipping {} for stable branch".format(filename))
+            continue
+        LOGGER.info("Updating {}".format(filename))
+        for line in fileinput.input(filename, inplace=True):
+            rrm = reporegex.match(line)
+            if rrm:
+                # Extract info of repo line (previous line)
+                # for branch line (current line)
+                prevline['project'] = rrm.group('project')
+                prevline['remote'] = rrm.group('remote')
+            print(branchregex.sub(
+                lambda x: bump_project_sha_with_comments(x, prevline), line)),
+
+    LOGGER.info("All files patched !")
+    msg = ("Here is a commit message you could use:\n"
+           "Update all SHAs for {new_version}\n\n"
+           "This patch updates all the roles to the latest available stable \n"
+           "SHA's, copies the release notes from the updated roles into the \n"
+           "integrated repo, updates all the OpenStack Service SHA's, and \n"
+           "updates the appropriate python requirements pins. \n\n"
+           "Depends-On: {release_changeid}").format(
+               new_version=os.environ.get('new_version', '<NEW VERSION>'),
+               release_changeid=os.environ.get('release_changeid', '<TODO>'),)
+    click.echo(msg)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -224,7 +246,7 @@ def update_role_files(**kwargs):
     # SHA's, copies the release notes from the updated roles into the
     # integrated repo, updates all the OpenStack Service SHA's, and
     # updates the appropriate python requirements pins.
-    pass
+    click.echo("Not implemented yet")
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -347,7 +369,10 @@ def bump_arr(**kwargs):
            "SHA's, copies the release notes from the updated roles into the \n"
            "integrated repo, updates all the OpenStack Service SHA's, and \n"
            "updates the appropriate python requirements pins. \n\n"
-           "Depends-On: {release_changeid}")
+           "Depends-On: {release_changeid}").format(
+               new_version=os.environ.get('new_version', '<NEW VERSION>'),
+               release_changeid=os.environ.get('release_changeid', '<TODO>'),
+    )
     click.echo(msg)
 
 
