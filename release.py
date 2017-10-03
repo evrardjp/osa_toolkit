@@ -304,7 +304,7 @@ def check_global_requirement_pins(**kwargs):
 @click_log.simple_verbosity_option(LOGGER)
 @click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
 @click.option("--external-roles/--no-external-roles", default=False)
-@click.option("--release-notes/no-release-notes", default=True)
+@click.option("--release-notes/--no-release-notes", default=True)
 def bump_arr(**kwargs):
     """ Update Roles in Ansible Role Requirements for branch,
     effectively freezing them.
