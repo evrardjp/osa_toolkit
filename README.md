@@ -61,8 +61,8 @@ Steps:
 1. Bump the role
    ```bash
    bump-ansible-role-requirements
-   bump-oa-release-number --version=auto --commit
-       export next_release = ...
+   bump-oa-release-number --version=auto
+       export next_release= ...
    check-global-requirements
    bump-upstream-sources --commit
    #update-role-files --comit

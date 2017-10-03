@@ -170,6 +170,7 @@ def update_os_release_file(**kwargs):
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click_log.simple_verbosity_option(LOGGER)
 @click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
+@click.option(*COMMIT_OPT, **COMMIT_PARAMS)
 def bump_upstream_sources(**kwargs):
     """ Bump OpenStack projects SHA in OA repo
     """
@@ -215,16 +216,22 @@ def bump_upstream_sources(**kwargs):
                 lambda x: bump_project_sha_with_comments(x, prevline), line)),
 
     LOGGER.info("All files patched !")
-    msg = ("Here is a commit message you could use:\n"
-           "Update all SHAs for {new_version}\n\n"
+    msg = ("Update all SHAs for {next_release}\n\n"
            "This patch updates all the roles to the latest available stable \n"
            "SHA's, copies the release notes from the updated roles into the \n"
            "integrated repo, updates all the OpenStack Service SHA's, and \n"
            "updates the appropriate python requirements pins. \n\n"
            "Depends-On: {release_changeid}").format(
-               new_version=os.environ.get('new_version', '<NEW VERSION>'),
+               next_release=os.environ.get('next_release', '<NEW VERSION>'),
                release_changeid=os.environ.get('release_changeid', '<TODO>'),)
-    click.echo(msg)
+    if kwargs['commit']:
+        repo = Repo(oa_folder)
+        repo.git.add('.')
+        repo.index.commit(msg)
+        click.echo("Commit done. Please verify before review.")
+    else:
+        click.echo("Here is a commit message you could use:\n")
+        click.echo(msg)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -343,10 +350,14 @@ def bump_arr(**kwargs):
             role['version'] = "{}".format(role_repo.head.commit)
             if kwargs['release_notes']:
                 LOGGER.info("Processing its release notes")
-                subprocess.call(
-                    ["rsync", "-aq",
-                     "{}/releasenotes/notes/*.yaml".format(role_path),
-                     "{}/releasenotes/notes/".format(oa_folder)])
+                release_notes_files = glob.glob(
+                    "{}/releasenotes/notes/*.yaml".format(role_path))
+                LOGGER.debug(release_notes_files)
+                for filepath in release_notes_files:
+                    subprocess.call(
+                        ["rsync", "-aq",
+                         filepath,
+                         "{}/releasenotes/notes/".format(oa_folder)])
 
         elif kwargs['external_roles']:
             # For external roles, don't clone,
