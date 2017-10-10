@@ -37,7 +37,6 @@ PRE_RELEASE_PREFIXES = (
     "0rc2",
     "0rc3",
 )
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 WORK_DIR_OPT = ['-w', '--workdir']
 WORK_DIR_OPT_PARAMS = dict(default='/tmp/newcode',
                            type=click.Path(exists=True, file_okay=False,
@@ -47,8 +46,6 @@ WORK_DIR_OPT_PARAMS = dict(default='/tmp/newcode',
 COMMIT_OPT = ['--commit/--no-commit']
 COMMIT_PARAMS = dict(default=False,
                      help='commits automatically the generated changes')
-OPENSTACK_REPOS = "https://git.openstack.org/openstack"
-PYPI_URL = "https://pypi.python.org/pypi"
 # Path to Ansible role requirements in workspace
 ARR_PATH = '/openstack-ansible/ansible-role-requirements.yml'
 

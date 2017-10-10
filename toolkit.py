@@ -4,9 +4,18 @@
 from datetime import datetime
 import os
 import re
+
 from git import cmd as gitcmd           # GitPython package
 from git import Repo
 from ruamel.yaml.util import load_yaml_guess_indent
+
+
+# Generic URLs
+OPENSTACK_REPOS = "https://git.openstack.org/openstack"
+PYPI_URL = "https://pypi.python.org/pypi"
+
+# Default variables for click help behavior
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 def load_yaml(path, mode='r'):
