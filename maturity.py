@@ -2,6 +2,7 @@
 """ Update OpenStack-Ansible Role maturity table from their respective repos
 """
 # Stdlib
+from datetime import datetime
 import codecs
 import logging
 import os
@@ -32,7 +33,9 @@ click_log.basic_config(LOGGER)
 
 def generate_maturity_matrix_html(roles=None):
     """ From Information about roles, generate a matrix, return html."""
-    with codecs.open('maturity_table.html.j2', encoding='utf-8') as mt_tmpl_fh:
+    script_dir = os.path.dirname(__file__)
+    template_path = os.path.join(script_dir, 'maturity_table.html.j2')
+    with codecs.open(template_path, encoding='utf-8') as mt_tmpl_fh:
         mt_tmpl = mt_tmpl_fh.read()
     template = Template(mt_tmpl)
     return template.render(roles=roles)
@@ -49,25 +52,34 @@ def update_role_maturity_matrix(**kwargs):
     """
 
     matrix = []
-    # Find projects
+    # Find projects through Project Config
+    LOGGER.info("Cloning OpenStack Project Config")
     pjct_cfg_path = kwargs['workdir'] + '/project-config'
     if os.path.lexists(pjct_cfg_path):
-        click.confirm('Deleting ' + pjct_cfg_path + '. OK?', abort=True)
-        shutil.rmtree(pjct_cfg_path)
-    _ = Repo.clone_from(
-        url=PROJECT_CONFIG,
-        to_path=pjct_cfg_path,
-        branch="master")
+        LOGGER.info("Project config already exists, updating.")
+        # If exists, ensure up to date
+        pjct_cfg_repo = Repo(pjct_cfg_path)
+        pjct_cfg_repo_o = pjct_cfg_repo.remotes.origin
+        pjct_cfg_repo_o.pull()
+    else:
+        _ = Repo.clone_from(
+            url=PROJECT_CONFIG,
+            to_path=pjct_cfg_path,
+            branch="master")
 
-    # Git clone OA and adapt its docs file
+    LOGGER.info("Cloning OpenStack-Ansible")
     oa_folder = kwargs['workdir'] + '/openstack-ansible'
     if os.path.lexists(oa_folder):
-        click.confirm('Deleting ' + oa_folder + '. OK?', abort=True)
-        shutil.rmtree(oa_folder)
-    oa_repo = Repo.clone_from(
-        url="{}/openstack-ansible".format(OPENSTACK_REPOS),
-        to_path=oa_folder,
-        branch="master")
+        LOGGER.info("openstack-ansible already exists, updating.")
+        # If exists, ensure up to date
+        oa_repo = Repo(oa_folder)
+        oa_repo_o = oa_repo.remotes.origin
+        oa_repo_o.pull()
+    else:
+        oa_repo = Repo.clone_from(
+            url="{}/openstack-ansible".format(OPENSTACK_REPOS),
+            to_path=oa_folder,
+            branch="master")
     arr, _, _ = load_yaml('{}/ansible-role-requirements.yml'.format(oa_folder))
 
     # For each project, get the metadata
@@ -81,7 +93,9 @@ def update_role_maturity_matrix(**kwargs):
         elif project['project'] == 'openstack/ansible-hardening':
             project_fullname = 'ansible-hardening'
             project_shortname = 'ansible-hardening'
-        LOGGER.info("Loading metadata for {}".format(project_shortname))
+        else:
+            continue
+        LOGGER.info("Loading metadata for %s" % project_shortname)
 
         project_path = "{}/{}".format(kwargs['workdir'], project_fullname)
         if os.path.lexists(project_path):
@@ -122,8 +136,13 @@ def update_role_maturity_matrix(**kwargs):
         #     - neutron
         #     - development
         #     - openstack
-        std_meta, _, _ = load_yaml(
-            "{}/meta/main.yml".format(project_path))
+        try:
+            std_meta, _, _ = load_yaml(
+                "{}/meta/main.yml".format(project_path))
+        except IOError:
+            # If no meta/main (like ops), don't count as
+            # a role to update.
+            continue
         # Only take what you need
         role['opensuse'] = False
         role['ubuntu'] = False
@@ -143,10 +162,16 @@ def update_role_maturity_matrix(**kwargs):
         # maturity_info:
         #     status: complete
         #     created_during: mitaka
-        osa_meta, _, _ = load_yaml(
-            "{}/meta/openstack-ansible.yml".format(project_path))
-        role['maturity_level'] = osa_meta['maturity_info']['status']
-        role['created_during'] = osa_meta['maturity_info']['created_during']
+        try:
+            osa_meta, _, _ = load_yaml(
+                "{}/meta/openstack-ansible.yml".format(project_path))
+        except IOError:
+            role['maturity_level'] = 'Unknown'
+            role['created_during'] = 'Unknown'
+        else:
+            role['maturity_level'] = osa_meta['maturity_info']['status']
+            role['created_during'] = \
+                osa_meta['maturity_info']['created_during']
         # Now checking presence in ansible-role-requirements.yml
         role['in_arr'] = any(
             arr_role['name'] == project_shortname for arr_role in arr
@@ -154,11 +179,14 @@ def update_role_maturity_matrix(**kwargs):
         matrix.append(role)
 
     # Write file
+    LOGGER.info("Patching OpenStack-Ansible")
     fpth = "doc/source/contributor/role-maturity-matrix.html"
-    with open("{}/{}".format(kwargs['workdir'], fpth), 'w') as matrix_fh:
+    with codecs.open("{}/{}".format(oa_folder, fpth),
+                     mode='w', encoding='utf-8') as matrix_fh:
         matrix_fh.write(generate_maturity_matrix_html(matrix))
     # Commit
     if kwargs['commit']:
-        message = "Updating roles maturity\n\nRefreshing the maturity matrix."
+        message = ("Updating roles maturity\n\n"
+                   "Update for the {:%d.%m.%Y}\n").format(datetime.now())
         oa_repo.index.add([fpth])
         oa_repo.index.commit(message)

@@ -3,7 +3,7 @@ Release.py
 
 Release tooling for OpenStack-Ansible.
 
-If you're not using default workspace folder, you should define it in all the commands.
+If you're not using default workspace folder (/tmp/workdir), you should define it in all the commands.
 
 Bumping master
 --------------
@@ -68,3 +68,14 @@ Steps:
    #update-role-files --comit
    ```
 1. Review OpenStack-Ansible folder and each of the roles.
+
+Maturity.py
+===========
+
+This toolkit will manage the maturity matrix that appears on openstack-ansible
+docs.
+
+If you're not using default workspace folder (/tmp/maturity), you should define it in all the commands.
+
+For now, only one command is implemented:
+update-role-maturity-matrix (--commit)

@@ -8,15 +8,16 @@
         <th>Supports OpenSUSE</th>
         <th>Included into openstack-ansible by default</th>
     </tr>
-    {% for role in roles %}
-    <tr> 
+    {%- for role in roles %}
+    <tr>
         <td>{{ role.name }}</td>
         <td>{{ role.maturity_level }}</td>
         <td>{{ role.created_during }}</td>
         <td>{% if role.ubuntu %}✔{% else %}✘{% endif %}</td>
         <td>{% if role.centos %}✔{% else %}✘{% endif %}</td>
-        <td>{% if role.opensuse %}✔{% else %}✘{% endif %}</td>        
-        <td>{% if role.in_arr %}✔{% else %}✘{% endif %}</td>        
+        <td>{% if role.opensuse %}✔{% else %}✘{% endif %}</td>
+        <td>{% if role.in_arr %}✔{% else %}✘{% endif %}</td>
     </tr>
-    {% endfor %}
+    {%- endfor -%}
+
 </table>
