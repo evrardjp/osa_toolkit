@@ -25,7 +25,27 @@ WORK_DIR_OPT_PARAMS = dict(default='/tmp/maturity',
 COMMIT_OPT = ['--commit/--no-commit']
 COMMIT_PARAMS = dict(default=False,
                      help='commits automatically the generated changes')
-
+# Deprecated roles data:
+DEPRECATED_ROLES = [
+    # {
+    #     'maturity_level': 'retired',
+    #     'name': '',
+    #     'created_during': '',
+    #     'retired_during': '',
+    # },
+    {
+        'maturity_level': 'retired',
+        'name': 'openstack-ansible-security',
+        'created_during': 'liberty',
+        'retired_during': 'pike',
+    },
+    {
+        'maturity_level': 'retired',
+        'name': 'pip_lock_down',
+        'created_during': 'liberty',
+        'retired_during': 'newton',
+    },
+]
 # CODE STARTS HERE
 LOGGER = logging.getLogger(__name__)
 click_log.basic_config(LOGGER)
@@ -50,7 +70,7 @@ def update_role_maturity_matrix(**kwargs):
     by fetching each of the role's metadata
     inside your workdir
     """
-
+    LOGGER.info("Workspace folder is %s" % kwargs['workdir'])
     matrix = []
     # Find projects through Project Config
     LOGGER.info("Cloning OpenStack Project Config")
@@ -166,17 +186,22 @@ def update_role_maturity_matrix(**kwargs):
             osa_meta, _, _ = load_yaml(
                 "{}/meta/openstack-ansible.yml".format(project_path))
         except IOError:
-            role['maturity_level'] = 'Unknown'
-            role['created_during'] = 'Unknown'
+            role['maturity_level'] = 'unknown'
+            role['created_during'] = 'unknown'
+            role['retired_during'] = 'unknown'
         else:
-            role['maturity_level'] = osa_meta['maturity_info']['status']
+            role['maturity_level'] = osa_meta['maturity_info']['status'].lower()
             role['created_during'] = \
-                osa_meta['maturity_info']['created_during']
+                osa_meta['maturity_info']['created_during'].lower()
+            role['retired_during'] = osa_meta['maturity_info'].get(
+                'retired_during', 'unknown').lower()
         # Now checking presence in ansible-role-requirements.yml
         role['in_arr'] = any(
             arr_role['name'] == project_shortname for arr_role in arr
         )
         matrix.append(role)
+
+    matrix.extend(DEPRECATED_ROLES)
 
     # Write file
     LOGGER.info("Patching OpenStack-Ansible")

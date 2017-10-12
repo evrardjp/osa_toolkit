@@ -1,23 +1,45 @@
+<h3>Active roles</h3>
 <table class="table table-bordered">
     <tr>
         <th>Role name</th>
-        <th>Maturity level</th>
         <th>Created during cycle</th>
+        <th>Maturity level</th>
+        <th>Included into openstack-ansible by default</th>
         <th>Supports Ubuntu</th>
         <th>Supports CentOS</th>
         <th>Supports OpenSUSE</th>
-        <th>Included into openstack-ansible by default</th>
     </tr>
-    {%- for role in roles %}
-    <tr>
+    {%- for role in roles | rejectattr('maturity_level','equalto', 'retired') %}
+    <tr {% if role.maturity_level | lower == 'incubated' -%}
+            class="warning"
+        {%- elif role.maturity_level | lower == 'unmaintained' -%}
+            class="danger"
+        {%- elif role.maturity_level | lower == 'unknown' -%}
+            class="info"
+        {%- endif -%}>
         <td>{{ role.name }}</td>
-        <td>{{ role.maturity_level }}</td>
-        <td>{{ role.created_during }}</td>
+        <td>{{ role.created_during | capitalize }}</td>
+        <td>{{ role.maturity_level | capitalize }}</td>
+        <td>{% if role.in_arr %}✔{% else %}✘{% endif %}</td>
         <td>{% if role.ubuntu %}✔{% else %}✘{% endif %}</td>
         <td>{% if role.centos %}✔{% else %}✘{% endif %}</td>
         <td>{% if role.opensuse %}✔{% else %}✘{% endif %}</td>
-        <td>{% if role.in_arr %}✔{% else %}✘{% endif %}</td>
     </tr>
     {%- endfor -%}
+</table>
 
+<h3>Retired roles</h3>
+<table class="table table-bordered">
+    <tr>
+        <th>Role name</th>
+        <th>Created during cycle</th>
+        <th>Retired during cycle</th>
+    </tr>
+    <tr>
+    {%- for role in roles | selectattr('maturity_level','equalto', 'retired') %}
+        <td>{{ role.name }}</td>
+        <td>{{ role.created_during | capitalize }}</td>
+        <td>{{ role.retired_during | capitalize }}</td>
+    </tr>
+    {%- endfor -%}
 </table>
