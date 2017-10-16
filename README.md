@@ -58,7 +58,8 @@ Steps:
    ```bash
    export release_changeid=$(git log HEAD^..HEAD | awk '/Change-Id/ {print $2}')
    ```
-1. Bump the role
+1. Ensure you're into OA folder, in a branch you can commit to (tracking what's needed)
+1. Bump files
    ```bash
    bump-ansible-role-requirements
    bump-oa-release-number --version=auto

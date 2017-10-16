@@ -332,7 +332,7 @@ def bump_arr(**kwargs):
     # Clone only the OpenStack hosted roles
     regex = re.compile(OPENSTACK_REPOS + '/(.*)')
     for role in arr:
-        LOGGER.info("Updating {}".format(role['name']))
+        LOGGER.info("Updating {} SHA".format(role['name']))
         role_path = kwargs['workdir'] + '/' + role['name']
         if regex.match(role['src']):
             if os.path.lexists(role_path):
@@ -346,7 +346,7 @@ def bump_arr(**kwargs):
             )
             role['version'] = "{}".format(role_repo.head.commit)
             if kwargs['release_notes']:
-                LOGGER.info("Processing its release notes")
+                LOGGER.info("Copying role release notes...")
                 release_notes_files = glob.glob(
                     "{}/releasenotes/notes/*.yaml".format(role_path))
                 LOGGER.debug(release_notes_files)
