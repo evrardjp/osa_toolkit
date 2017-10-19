@@ -419,13 +419,18 @@ def bump_oa_release_number(**kwargs):
             "openstack_release: {}".format(nver))),
     LOGGER.info("Updated the version in repo to {}".format(nver))
 
-    if kwargs['commit']:
-        message = """Set OpenStack-Ansible release to {}
+    message = """Set OpenStack-Ansible release to {}
 
-        """.format(nver)
+    """.format(nver)
+
+    if kwargs['commit']:
         repo = Repo(oa_folder)
-        repo.index.add([fpth])
-        repo.index.commit(message)
+        repo.git.add('.')
+        repo.index.commit(msg)
+        click.echo("Commit done. Please verify before review.")
+    else:
+        click.echo("Here is a commit message you could use:\n")
+        click.echo(msg)
 
 
 if __name__ == '__main__':

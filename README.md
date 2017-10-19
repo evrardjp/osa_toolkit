@@ -29,7 +29,7 @@ Steps:
 1. Ensure you're master (not detached)
 1. Freeze ansible-role-requirements by doing:
    ```bash
-    bump-ansible-role-requirements
+    bump-ansible-role-requirements --external-roles
     bump-oa-release-number --version=17.0.0.0b1 --commit
    ```
 1. git review in OA
