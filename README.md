@@ -30,14 +30,14 @@ Steps:
 1. Freeze ansible-role-requirements by doing:
    ```bash
     bump-ansible-role-requirements
-    bump-oa-release-number --version=17.0.0b1 --commit
+    bump-oa-release-number --version=17.0.0.0b1 --commit
    ```
 1. git review in OA
 1. Wait for it to merge.
 1. Ensure you're still at the right sha in your workspace folder (detached or not).
 1. Emit release commit by doing (it will be based on checked out sha)
    ```bash
-    update-os-release-file --branch=queens --version=17.0.0b1 --commit
+    update-os-release-file --branch=queens --version=17.0.0.0b1 --commit
    ```
 1. Review in your release folder and git review
 1. Unfreeze by git revert
