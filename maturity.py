@@ -11,28 +11,25 @@ import shutil
 import click
 import click_log
 from git import Repo
+from git import exc as gitExceptions
 from jinja2 import Template
-from toolkit import CONTEXT_SETTINGS, OPENSTACK_REPOS, load_yaml
+from toolkit import CONTEXT_SETTINGS, OPENSTACK_REPOS, PROJECT_CONFIG_REPO
+from toolkit import load_yaml, tracking_branch_name
 
-# Workdir
-PROJECT_CONFIG = OPENSTACK_REPOS + "-infra/project-config"
+# Workdir and other click defaults for this script
 WORK_DIR_OPT = ['-w', '--workdir']
 WORK_DIR_OPT_PARAMS = dict(default='/tmp/maturity',
                            type=click.Path(exists=True, file_okay=False,
                                            dir_okay=True, writable=True,
                                            resolve_path=True),
-                           help='Work directory: Temporary workspace folder')
+                           help='Work directory: Temporary workspace folder',
+                           show_default=True)
 COMMIT_OPT = ['--commit/--no-commit']
 COMMIT_PARAMS = dict(default=False,
                      help='commits automatically the generated changes')
+
 # Deprecated roles data:
-DEPRECATED_ROLES = [
-    # {
-    #     'maturity_level': 'retired',
-    #     'name': '',
-    #     'created_during': '',
-    #     'retired_during': '',
-    # },
+RETIRED_ROLES = [
     {
         'maturity_level': 'retired',
         'name': 'openstack-ansible-security',
@@ -46,6 +43,7 @@ DEPRECATED_ROLES = [
         'retired_during': 'newton',
     },
 ]
+
 # CODE STARTS HERE
 LOGGER = logging.getLogger(__name__)
 click_log.basic_config(LOGGER)
@@ -65,6 +63,7 @@ def generate_maturity_matrix_html(roles=None):
 @click_log.simple_verbosity_option(LOGGER)
 @click.option(*WORK_DIR_OPT, **WORK_DIR_OPT_PARAMS)
 @click.option(*COMMIT_OPT, **COMMIT_PARAMS)
+@click.option('--branch', help='OSA branch to update if OSA folder absent')
 def update_role_maturity_matrix(**kwargs):
     """ Update in tree the maturity.html file
     by fetching each of the role's metadata
@@ -83,23 +82,41 @@ def update_role_maturity_matrix(**kwargs):
         pjct_cfg_repo_o.pull()
     else:
         _ = Repo.clone_from(
-            url=PROJECT_CONFIG,
+            url=PROJECT_CONFIG_REPO,
             to_path=pjct_cfg_path,
             branch="master")
 
-    LOGGER.info("Cloning OpenStack-Ansible")
+    # Ensure OpenStack-Ansible can receive the new maturity matrix
     oa_folder = kwargs['workdir'] + '/openstack-ansible'
-    if os.path.lexists(oa_folder):
-        LOGGER.info("openstack-ansible already exists, updating.")
+
+    if os.path.lexists(oa_folder) and kwargs['branch']:
+        LOGGER.info("openstack-ansible already exists, checking out branch.")
         # If exists, ensure up to date
         oa_repo = Repo(oa_folder)
         oa_repo_o = oa_repo.remotes.origin
         oa_repo_o.pull()
-    else:
+        branch = kwargs['branch']
+        oa_repo.git.checkout(branch)
+    elif os.path.lexists(oa_folder) and not kwargs['branch']:
+        LOGGER.info("openstack-ansible already exists, re-using branch.")
+        # If exists, ensure up to date
+        oa_repo = Repo(oa_folder)
+        oa_repo_o = oa_repo.remotes.origin
+        oa_repo_o.pull()
+        branch = tracking_branch_name(oa_folder)
+    elif not os.path.lexists(oa_folder) and kwargs['branch']:
+        LOGGER.info("Cloning OpenStack-Ansible with given branch")
+        branch = kwargs['branch']
         oa_repo = Repo.clone_from(
             url="{}/openstack-ansible".format(OPENSTACK_REPOS),
             to_path=oa_folder,
-            branch="master")
+            branch=branch)
+    else:
+        LOGGER.error("Not enough data")
+        raise SystemExit("You do not have openstack-ansible checked out "
+                         "and no branch was given")
+
+    # Load ARR for matrix "integrated" info
     arr, _, _ = load_yaml('{}/ansible-role-requirements.yml'.format(oa_folder))
 
     # For each project, get the metadata
@@ -130,7 +147,32 @@ def update_role_maturity_matrix(**kwargs):
                 to_path=project_path,
                 branch="master")
 
+        # checkout to a branch matching the osa branch, or checkout master
+        # if none is matching
+        try:
+            project_repo.git.checkout(branch)
+        except gitExceptions.GitCommandError as gce_except:
+            if "did not match any file(s) known to git" in gce_except.stderr:
+                LOGGER.info(
+                    ("Project {projectname} has no branch {branchname} "
+                     "and will be ignored from the maturity "
+                     "table".format(
+                         projectname=project_shortname,
+                         branchname=branch))
+                )
+                continue
+            else:
+                raise SystemExit("Error checking out branch {}".format(branch))
+
         role['name'] = project_shortname
+        try:
+            std_meta, _, _ = load_yaml(
+                "{}/meta/main.yml".format(project_path))
+        except IOError:
+            # If no meta/main (like ops), don't count as
+            # a role to update.
+            continue
+        # Only take what you need from standard metadata
         # Example of standard metadata:
         # galaxy_info:
         #   author: rcbops
@@ -156,14 +198,6 @@ def update_role_maturity_matrix(**kwargs):
         #     - neutron
         #     - development
         #     - openstack
-        try:
-            std_meta, _, _ = load_yaml(
-                "{}/meta/main.yml".format(project_path))
-        except IOError:
-            # If no meta/main (like ops), don't count as
-            # a role to update.
-            continue
-        # Only take what you need
         role['opensuse'] = False
         role['ubuntu'] = False
         role['centos'] = False
@@ -191,8 +225,7 @@ def update_role_maturity_matrix(**kwargs):
             role['retired_during'] = 'unknown'
         else:
             role['maturity_level'] = osa_meta['maturity_info']['status'].lower()
-            role['created_during'] = \
-                osa_meta['maturity_info']['created_during'].lower()
+            role['created_during'] = osa_meta['maturity_info']['created_during'].lower()
             role['retired_during'] = osa_meta['maturity_info'].get(
                 'retired_during', 'unknown').lower()
         # Now checking presence in ansible-role-requirements.yml
@@ -201,13 +234,13 @@ def update_role_maturity_matrix(**kwargs):
         )
         matrix.append(role)
 
-    matrix.extend(DEPRECATED_ROLES)
+    matrix.extend(RETIRED_ROLES)
 
     # Write file
     LOGGER.info("Patching OpenStack-Ansible")
     fpth = "doc/source/contributor/role-maturity-matrix.html"
     with codecs.open("{}/{}".format(oa_folder, fpth),
-                     mode='w', encoding='utf-8') as matrix_fh:
+                     mode='w+', encoding='utf-8') as matrix_fh:
         matrix_fh.write(generate_maturity_matrix_html(matrix))
     # Commit
     if kwargs['commit']:

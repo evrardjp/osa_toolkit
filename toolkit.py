@@ -12,6 +12,7 @@ from ruamel.yaml.util import load_yaml_guess_indent
 
 # Generic URLs
 OPENSTACK_REPOS = "https://git.openstack.org/openstack"
+PROJECT_CONFIG_REPO = OPENSTACK_REPOS + "-infra/project-config"
 PYPI_URL = "https://pypi.python.org/pypi"
 
 # Default variables for click help behavior
