@@ -425,9 +425,15 @@ def bump_oa_release_number(**kwargs):
             "openstack_release: {}".format(nver))),
     LOGGER.info("Updated the version in repo to {}".format(nver))
 
-    message = """Set OpenStack-Ansible release to {}
-
-    """.format(nver)
+    msg = ("Here is a commit message you could use:\n"
+           "Update all SHAs for {new_version}\n\n"
+           "This patch updates all the roles to the latest available stable \n"
+           "SHA's, copies the release notes from the updated roles into the \n"
+           "integrated repo, updates all the OpenStack Service SHA's, and \n"
+           "updates the appropriate python requirements pins. \n\n"
+           "Depends-On: {release_changeid}").format(
+               new_version=os.environ.get('new_version', nver),
+               release_changeid=os.environ.get('release_changeid', '<TODO>'))
 
     if kwargs['commit']:
         repo = Repo(oa_folder)
@@ -435,7 +441,6 @@ def bump_oa_release_number(**kwargs):
         repo.index.commit(msg)
         click.echo("Commit done. Please verify before review.")
     else:
-        click.echo("Here is a commit message you could use:\n")
         click.echo(msg)
 
 
