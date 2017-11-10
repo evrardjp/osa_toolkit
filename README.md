@@ -53,7 +53,10 @@ Steps:
    update-os-release-file --branch=pike --version=16.0.2 --commit
    ```
 1. Go to release folder in workspace
-1. Review and git review
+1. Review and
+   ```bash
+   git review -t release_osa
+   ```
 1. Take review change id
    ```bash
    export release_changeid=$(git log HEAD^..HEAD | awk '/Change-Id/ {print $2}')

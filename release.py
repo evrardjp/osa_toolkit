@@ -69,15 +69,26 @@ def update_os_release_file(**kwargs):
     in your workdir
     """
 
+    LOGGER.info("Doing pre-flight checks")
+
     releases_repo_url = OPENSTACK_REPOS + '/releases.git'
     releases_folder = kwargs['workdir'] + '/releases'
 
+    oa_folder = kwargs['workdir'] + '/openstack-ansible'
+    click.confirm(("Are your sure your {} folder is properly "
+                   "checked out at the right version?").format(oa_folder),
+                  abort=True)
+
     # Args validation
-    LOGGER.info("Doing pre-flight checks")
     if kwargs['branch'] not in VALID_CODE_NAMES:
         raise SystemExit("Invalid branch name {}".format(kwargs['branch']))
+
+    # Version validation
     if kwargs['version'] == "auto":
-        version = click.prompt("Auto is not yet implemented here. Version?")
+        fpth, version = get_oa_version(oa_folder)
+        LOGGER.info("Version {} found in {}".format(version, fpth))
+        if version == "master":
+            raise SystemExit("You should not release from a moving target")
     else:
         version = kwargs['version']
 
@@ -95,17 +106,12 @@ def update_os_release_file(**kwargs):
 
     if major_version != VALID_CODE_NAMES[kwargs['branch']]:
         raise SystemExit("Not a valid number for this series")
-
-    oa_folder = kwargs['workdir'] + '/openstack-ansible'
-    click.confirm(("Are your sure your {} folder is properly "
-                   "checked out at the right version?").format(oa_folder),
-                  abort=True)
     # Args validation done.
 
     yaml = YAML()
     oa = Repo(oa_folder)
     head_commit = oa.head.commit
-    LOGGER.info("Found OpenStack-Ansible version {}".format(head_commit))
+    LOGGER.info("OpenStack-Ansible current SHA {}".format(head_commit))
     if os.path.lexists(releases_folder):
         click.confirm('Deleting ' + releases_folder + '. OK?', abort=True)
         shutil.rmtree(releases_folder)
