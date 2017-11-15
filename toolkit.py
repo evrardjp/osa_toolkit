@@ -79,11 +79,15 @@ def find_latest_remote_ref(url, reference, guess=True):
     # (so v11.1, 1.11.1rc1 would still match)
     regex = re.compile('(?P<sha>[0-9a-f]{40})\t(?P<fullref>'
                        'refs/heads/(?P<branch>.*)'
-                       '|refs/tags/(?P<tag>.*\d))')
+                       '|refs/tags/(?P<tag>.*(\d|-eol)))')
 
     # search_ver will become ["master"], ["eol-mitaka"],
     # ["stable/pike"], ["16", "1", "9"]
     search_ver = reference.split('.')
+
+    # For EOL tag matching
+    if 'stable/' in reference:
+        eol_tag = reference.strip('stable/') + '-eol'
 
     # sadly we can't presume the ls-remote list will be sorted
     # so we have to find out ourselves.
@@ -94,6 +98,9 @@ def find_latest_remote_ref(url, reference, guess=True):
         # First, start to match the remote result with a branchname
         if m and m.group('branch') and m.group('branch') == reference:
             return m.group('sha')
+        # Try to match EOL tag
+        elif m and m.group('tag') == eol_tag:
+            return eol_tag
         # Then try to find closest matching tags if guess work is allowed
         elif m and m.group('tag') and guess:
             ref_of_tag = m.group('tag').split('.')
