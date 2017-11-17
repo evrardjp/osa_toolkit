@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name='osa_toolkit',
     version='0.1',
-    py_modules=['release','maturity'],
+    py_modules=['release', 'maturity', 'bugtriage'],
     install_requires=[
         'Click',
         'click-log',
@@ -23,5 +23,6 @@ setup(
         bump-oa-release-number=release:bump_oa_release_number
         update-os-release-file=release:update_os_release_file
         update-role-maturity-matrix=maturity:update_role_maturity_matrix
+        generate-bug-triage-page=bugtriage:generate_page
     ''',
 )
