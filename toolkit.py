@@ -88,6 +88,8 @@ def find_latest_remote_ref(url, reference, guess=True):
     # For EOL tag matching
     if 'stable/' in reference:
         eol_tag = reference.strip('stable/') + '-eol'
+    else:
+        eol_tag = None
 
     # sadly we can't presume the ls-remote list will be sorted
     # so we have to find out ourselves.
@@ -99,7 +101,7 @@ def find_latest_remote_ref(url, reference, guess=True):
         if m and m.group('branch') and m.group('branch') == reference:
             return m.group('sha')
         # Try to match EOL tag
-        elif m and m.group('tag') == eol_tag:
+        elif eol_tag and m and m.group('tag') == eol_tag:
             return eol_tag
         # Then try to find closest matching tags if guess work is allowed
         elif m and m.group('tag') and guess:
