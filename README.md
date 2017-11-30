@@ -1,9 +1,9 @@
-Release.py
-==========
+Release
+=======
 
 Release tooling for OpenStack-Ansible.
 
-If you're not using default workspace folder (/tmp/workdir), you should define it in all the commands.
+If you're not using default workspace folder (/tmp/releases), you should define it in all the commands.
 
 Bumping master
 --------------
@@ -13,9 +13,11 @@ Steps:
 1. Checkout to master (not detached)
 1. Suggest upper constraints pin changes:
    ``check-global-requirements``
+1. unset release_changeid
+1. unset next_release
 1. Update Upstream Projects:
    ```bash
-    bump-upstream-sources --commit
+    bump-upstream-sources
     #update-role-files --comit
    ```
 1. Git review
@@ -47,10 +49,12 @@ Doing a stable release
 
 Steps:
 
+1. unset release_changeid
+1. unset next_release
 1. Go to OA folder
 1. Ensure you're at the head of your branch you want to release, or at the right sha.
    ```
-   update-os-release-file --branch=pike --version=16.0.2 --commit
+   update-os-release-file --branch=pike --version=auto --commit
    ```
 1. Go to release folder in workspace
 1. Review and
@@ -72,9 +76,12 @@ Steps:
    #update-role-files --comit
    ```
 1. Review OpenStack-Ansible folder and each of the roles.
+1. git review -s
+1. git commit --amend
+1. git review -t release_osa
 
-Maturity.py
-===========
+Maturity
+========
 
 This toolkit will manage the maturity matrix that appears on openstack-ansible
 docs.
@@ -83,3 +90,13 @@ If you're not using default workspace folder (/tmp/maturity), you should define 
 
 For now, only one command is implemented:
 update-role-maturity-matrix (--commit)
+
+Bug triage
+==========
+
+This toolkit will list all tools for triaging bugs and, in the future, make trends
+
+If you're not using default workspace folder (/tmp/bugtriage), you should define it in all the commands.
+
+For now, only one command is implemented:
+generate-bug-triage-page . it generates a list of links for the https://etherpad.openstack.org/p/osa-bugtriage page.

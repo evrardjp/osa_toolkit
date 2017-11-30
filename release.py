@@ -38,7 +38,7 @@ PRE_RELEASE_PREFIXES = (
     "0rc3",
 )
 WORK_DIR_OPT = ['-w', '--workdir']
-WORK_DIR_OPT_PARAMS = dict(default='/tmp/newcode',
+WORK_DIR_OPT_PARAMS = dict(default='/tmp/releases',
                            type=click.Path(exists=True, file_okay=False,
                                            dir_okay=True, writable=True,
                                            resolve_path=True),
@@ -443,10 +443,3 @@ def bump_oa_release_number(**kwargs):
     else:
         click.echo(msg)
 
-
-if __name__ == '__main__':
-    # update_os_release_file()
-    # check_global_requirement_pins()
-    # bump_arr()
-    # bump_oa_release_number()
-    bump_upstream_sources()
