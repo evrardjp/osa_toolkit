@@ -18,31 +18,41 @@ Steps:
 1. Update Upstream Projects:
    ```bash
     bump-upstream-sources
-    #update-role-files --comit
    ```
+1. Update role files by using the source branch updater lib
 1. Git review
 
-Releasing master milestone
---------------------------
+Freeze before master milestone release
+--------------------------------------
 
 Steps:
 
+1. unset release_changeid
+1. unset next_release
 1. Go to OA folder
 1. Ensure you're master (not detached)
 1. Freeze ansible-role-requirements by doing:
    ```bash
-    bump-ansible-role-requirements --external-roles
-    bump-oa-release-number --version=17.0.0.0b1 --commit
+    bump-ansible-role-requirements
    ```
+1. Freeze release number by doing
+   ```bash
+    bump-oa-release-number --version=17.0.0.0b3 --commit
+   ```
+1. Edit commit message
 1. git review in OA
-1. Wait for it to merge.
+
+Release after master milestone freeze
+-------------------------------------
+
+1. Go to OA folder
 1. Ensure you're still at the right sha in your workspace folder (detached or not).
 1. Emit release commit by doing (it will be based on checked out sha)
    ```bash
-    update-os-release-file --branch=queens --version=17.0.0.0b1 --commit
+    update-os-release-file --branch=queens --version=17.0.0.0b3 --commit
    ```
 1. Review in your release folder and git review
-1. Unfreeze by git revert
+1. Unfreeze manually: git revert would remove the release notes.
 
 Doing a stable release
 ----------------------
