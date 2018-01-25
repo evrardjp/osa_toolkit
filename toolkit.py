@@ -15,6 +15,11 @@ OPENSTACK_REPOS = "https://git.openstack.org/openstack"
 PROJECT_CONFIG_REPO = OPENSTACK_REPOS + "-infra/project-config"
 PYPI_URL = "https://pypi.python.org/pypi"
 
+# OA_VARS
+OA_VERSION_FILES = ["inventory/group_vars/all/all.yml",
+                    "group_vars/all/all.yml",
+                    "playbooks/inventory/group_vars/all.yml"]
+
 # Default variables for click help behavior
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -54,8 +59,7 @@ def get_oa_version(osa_folder):
     the end slash.
     """
 
-    for filename in ["group_vars/all/all.yml",
-                     "playbooks/inventory/group_vars/all.yml"]:
+    for filename in OA_VERSION_FILES:
         var_file = "{}/{}".format(osa_folder, filename)
         if os.path.exists(var_file):
             data, _, _ = load_yaml(var_file)
