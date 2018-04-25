@@ -157,8 +157,8 @@ def update_os_release_file(**kwargs):
 
     with open(deliverable_file, 'w') as df_h:
         yaml.explicit_start = True
-        yaml.block_seq_indent = bsi
-        yaml.indent = ind
+        yaml.block_seq_indent = 0
+        yaml.indent = 2
         yaml.dump(deliverable, df_h)
         LOGGER.info("Patched!")
 
