@@ -345,11 +345,19 @@ def bump_arr(**kwargs):
                 shutil.rmtree(role_path)
             # We need to clone instead of ls-remote-ing this
             # way we can rsync the release notes
-            role_repo = Repo.clone_from(
-                url=role['src'],
-                to_path=role_path,
-                branch=remote_branch,
-            )
+            try:
+              role_repo = Repo.clone_from(
+                  url=role['src'],
+                  to_path=role_path,
+                  branch=remote_branch,
+              )
+            except Exception:
+              eol_branch = remote_branch.strip('stable/') + '-eol'
+              role_repo = Repo.clone_from(
+                  url=role['src'],
+                  to_path=role_path,
+                  branch=eol_branch,
+              )
             role['version'] = "{}".format(role_repo.head.commit)
             if kwargs['release_notes']:
                 LOGGER.info("Copying role release notes...")
